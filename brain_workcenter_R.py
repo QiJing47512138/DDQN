@@ -351,6 +351,20 @@ class routing_brain:
         every element in the replay menory is a list [s_0, a_0, r_0, s_1]
         all element of this list are tensors
         """
+        global num_iterations 
+        num_iterations = 100
+        reward = 0.0
+        epoch_rewards = []
+        rewards = []
+
+        for j in range(num_iterations):
+            # 执行训练及相关操作
+            reward = self.train_DDQN()
+            
+            self.epoch_rewards.append(reward)
+            rewards.append(reward)
+            
+                   
         size = min(len(self.rep_memo),self.minibatch_size)
         minibatch = random.sample(self.rep_memo,size)
         '''
@@ -420,7 +434,14 @@ class routing_brain:
         # print('perform the optimization of parameters')
         # optimize the parameters
         self.optimizer.step()
+        return rewards
+    
+def calc_reward(self):
+        self.epoch_rewards =[]
+        mean_reward = np.mean(self.epoch_rewards)  # 计算平均奖励值
 
+        return mean_reward
+    
     def loss_record_output(self,**kwargs):
         fig = plt.figure(figsize=(10,5.5))
         # left half, showing the loss of training
