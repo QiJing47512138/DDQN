@@ -94,7 +94,7 @@ class shopfloor:
         #清空当前 epoch 的奖励列表，为下一轮 epoch 做准备
         self.epoch_rewards = []
 
-    def train(self, num_epochs, num_iterations):
+    def train_rewards(self, num_epochs, num_iterations):
         self.epoch_rewards = []
         self.rewards = []
         self.iterations = []
