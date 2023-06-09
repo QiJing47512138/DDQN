@@ -114,7 +114,7 @@ class shopfloor:
             self.iterations.append((i + 1) * num_iterations)
 
             
-        self.m_list[0].plot_rewards(self.iterations,self.rewards)
+            self.plot_training_rewards(self.iterations,self.rewards) 
            
 
         mean_reward = np.mean(self.rewards)
