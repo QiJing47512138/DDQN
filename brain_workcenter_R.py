@@ -24,6 +24,11 @@ class routing_brain:
         # specify the constituent machines, and activate their routing learning
         self.m_per_wc = len(self.wc_list[0].m_list)
         print(self.wc_list[0].m_list,self.m_per_wc)
+
+ 
+        self.mean_reward = []
+        
+
         for m in m_list:
             m.routing_learning_event.succeed()
         # state space, eah machine generate 3 types of data, along with the processing time of arriving job, and job slack
@@ -32,7 +37,7 @@ class routing_brain:
         self.output_size = self.m_per_wc
         # learning rate
         self.lr = 0.01
-        # specify the address to store the model
+        # specify the address to store the model 根据每个工作中心包含的机器数建立不同大小的神经网络
         print("---> DEFAULT mode ON <---")
         if self.m_per_wc == 2:
             self.routing_action_NN = build_network_small(self.input_size, self.output_size)
@@ -44,8 +49,11 @@ class routing_brain:
             self.routing_action_NN = build_network_large(self.input_size, self.output_size)
             self.address_seed = os.path.join("routing_models", "large_state_dict"+'{}wc{}m'.format(len(wc_list),len(m_list)))
         # shared functions
+        # 将目标网络初始化与动作网络相同的参数
         self.routing_target_NN = copy.deepcopy(self.routing_action_NN)
+        # 状态函数设置为 state_deeper
         self.build_state = self.state_deeper
+        # 将训练函数设置为train_DDQN
         self.train = self.train_DDQN
         for wc in self.wc_list:
             wc.build_state = self.state_deeper
@@ -76,7 +84,7 @@ class routing_brain:
         self.env.process(self.update_rep_memo_parameter_sharing_process())
         self.build_initial_rep_memo = self.build_initial_rep_memo_parameter_sharing
         self.env.process(self.update_learning_rate_process())
-        # finalize the address_seed
+        # finalize the address_seed 将地址种子（address_seed）的后缀修改为".pt"，表示它将用于保存模型的参数文件
         self.address_seed += ".pt"
         # some shared process
         self.env.process(self.warm_up_process())
@@ -117,6 +125,7 @@ class routing_brain:
             wc.job_routing = self.action_DRL
 
     # use as the default, initial routing rule for workcenter
+    # 调度策略：选择最早可用的机器（机器可用性最小）
     def EA(self, job_idx, routing_data, job_pt, job_slack, wc_idx, *args):
         # concatenate all data, build state, dtype is float
         s_t = self.build_state(routing_data, job_pt, job_slack, wc_idx)
@@ -128,7 +137,7 @@ class routing_brain:
         self.time_record.append(self.env.now)
         #print('ET ROUTING: wc {} assign job {} to m {}'.format(wc_idx, job_idx,self.wc_list[wc_idx].m_list[a_t].m_idx))
         return a_t
-
+    # 调度策略：选择最晚完成时间最短的机器
     def CT(self, job_idx, routing_data, job_pt, job_slack, wc_idx, *args): # earliest completion time
         s_t = self.build_state(routing_data, job_pt, job_slack, wc_idx)
         #print(data,job_pt)
@@ -169,7 +178,7 @@ class routing_brain:
         self.build_experience(job_idx, s_t, a_t, wc_idx)
         self.time_record.append(self.env.now)
         return a_t
-
+    # 在工作中心对象的incomplete_experience列表中构建了一个包含当前状态 s_t 和动作 a_t 的不完整经验
     def build_experience(self, job_idx, s_t, a_t, wc_idx):
         self.wc_list[wc_idx].incomplete_experience[job_idx] = [s_t, a_t]
 
@@ -177,7 +186,7 @@ class routing_brain:
     2. downwards are functions used for building the state of the experience (replay memory)
     '''
 
-
+    #不同的状态表示策略
     def state_normalization(self, routing_data, job_pt, job_slack, wc_idx):
         coming_job_idx = np.where(self.job_creator.next_wc_list == wc_idx)[0] # return the index of coming jobs
         coming_job_no = coming_job_idx.size # expected arriving job number
@@ -191,7 +200,7 @@ class routing_brain:
         m_state = [a[:2] for a in routing_data]
         s_t = torch.tensor(np.concatenate(m_state + [job_pt, [job_slack, coming_job_time, coming_job_slack]]), dtype=torch.float)
         return s_t
-
+    #不同的状态表示策略
     def state_deeper(self, routing_data, job_pt, job_slack, wc_idx):
         coming_job_idx = np.where(self.job_creator.next_wc_list == wc_idx)[0] # return the index of coming jobs
         coming_job_no = coming_job_idx.size # expected arriving job number
@@ -359,12 +368,13 @@ class routing_brain:
 
         for j in range(num_iterations):
             # 执行训练及相关操作
-            reward = self.train_DDQN()
+            reward = self.calc_reward()
             
             self.epoch_rewards.append(reward)
             rewards.append(reward)
-            
-                   
+             # 生成结果并使用yield语句返回
+           
+
         size = min(len(self.rep_memo),self.minibatch_size)
         minibatch = random.sample(self.rep_memo,size)
         '''
@@ -434,14 +444,20 @@ class routing_brain:
         # print('perform the optimization of parameters')
         # optimize the parameters
         self.optimizer.step()
+
         return rewards
-    
-def calc_reward(self):
+            
+
+    def calc_reward(self):
         self.epoch_rewards =[]
+        
+
         mean_reward = np.mean(self.epoch_rewards)  # 计算平均奖励值
 
         return mean_reward
-    
+
+   
+
     def loss_record_output(self,**kwargs):
         fig = plt.figure(figsize=(10,5.5))
         # left half, showing the loss of training

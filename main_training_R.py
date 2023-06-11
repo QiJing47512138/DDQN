@@ -1,11 +1,8 @@
 import simpy
 import sys
 sys.path 
-import matplotlib.pyplot as plt
-
-import matplotlib.animation as animation
-import torch
 import numpy as np
+import torch
 from tabulate import tabulate
 
 import agent_machine
@@ -14,14 +11,20 @@ import brain_workcenter_R
 import job_creation
 import breakdown_creation
 import validation_S
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+
+
+
 
 """
 THIS IS THE MODULE FOR ROUTING AGENT TRAINING
 """
 
 class shopfloor:
-    def __init__(self, env, span, m_no, wc_no, **kwargs):
+    def __init__(self, env, span, m_no, wc_no,**kwargs):
         '''STEP 1: create environment instances and specifiy simulation span '''
+        # 创建环境实例 指定模拟范围
         self.env=env
         self.span = span
         self.m_no = m_no
@@ -32,9 +35,10 @@ class shopfloor:
         self.epoch_rewards = []
 
         # create a list called rewards
+
+
         self.rewards = []  
         self.iterations = []  
-       
 
         m_per_wc = int(self.m_no / self.wc_no)
         '''STEP 2.1: create instances of machines'''
@@ -86,6 +90,7 @@ class shopfloor:
 
     def calc_reward(self):
         # 计算当前 epoch 中的平均奖励值
+        self.epoch_rewards = list(self.epoch_rewards)
         mean_reward = np.mean(self.epoch_rewards)
 
         # 将平均奖励值添加到奖励列表中
@@ -93,33 +98,59 @@ class shopfloor:
 
         #清空当前 epoch 的奖励列表，为下一轮 epoch 做准备
         self.epoch_rewards = []
+        return mean_reward
+
+    def plot_training_rewards(self,iterations, rewards):
+        plt.plot(iterations, rewards)
+        plt.xlabel('iterations')
+        plt.ylabel('Average Reward')
+        plt.title('Reward over iterations')
+        plt.show()
+    
+        
+    #plot_training_rewards(iterations, rewards)
+    
+    def train_generator(self):
+        self.epoch_rewards = list(self.epoch_rewards)
+        for value in self.routing_brain.train():
+            self.epoch_rewards.append(value)
+            yield value
+        
 
     def train_rewards(self, num_epochs, num_iterations):
-        self.epoch_rewards = []
+        self.epoch_rewards = list(self.epoch_rewards)
         self.rewards = []
         self.iterations = []
-
-        self.env.process(self.routing_brain.train())
-
+        self.env.process(self.train_generator())
+    
         # model train
         for i in range(num_epochs):
             self.epoch_rewards = []
             for j in range(num_iterations):
                 # 执行训练及相关操作
-                reward = self.routing_brain.train()
-                self.epoch_rewards.append(reward)
+                #reward = self.train_generator()
+
+                rewards_generator = self.train_generator()
+                for reward in rewards_generator:
+                    self.epoch_rewards.append(reward)
+
+                #self.epoch_rewards.append(reward)
 
             self.calc_reward()
 
             self.iterations.append((i + 1) * num_iterations)
 
-            
             self.plot_training_rewards(self.iterations,self.rewards) 
-           
+      
+            
 
-        mean_reward = np.mean(self.rewards)
+        # mean_reward = np.mean(list(self.epoch_rewards))
+        mean_reward = np.mean([x for x in self.epoch_rewards if isinstance(x, int)])
+
         return mean_reward
-   
+    
+
+
 
     
 
@@ -129,16 +160,9 @@ env = simpy.Environment()
 span = 100000
 m_no = 6
 wc_no = 3
-num_epochs = 10
-num_iterations = 100
+num_epochs = 1
+num_iterations = 1
 
 
 spf = shopfloor(env, span, m_no, wc_no)
-mean_reward = spf.train (num_epochs, num_iterations)
-
-plt.figure()
-plt.xlabel('iterations')
-plt.ylabel('Average Reward')
-plt.title('Reward over iterations')
-
-plt.show()
+mean_reward = spf.train_rewards (num_epochs, num_iterations)
