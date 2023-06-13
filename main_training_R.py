@@ -105,8 +105,7 @@ class shopfloor:
         plt.xlabel('iterations')
         plt.ylabel('Average Reward')
         plt.title('Reward over iterations')
-        plt.show()
-    
+        
         
     #plot_training_rewards(iterations, rewards)
     
@@ -138,21 +137,18 @@ class shopfloor:
 
             self.calc_reward()
 
-            self.iterations.append((i + 1) * num_iterations)
+            self.iterations.append(i + 1)
 
-            self.plot_training_rewards(self.iterations,self.rewards) 
-      
+        self.plot_training_rewards(self.iterations,self.rewards) 
+
+        plt.show()
             
 
         # mean_reward = np.mean(list(self.epoch_rewards))
         mean_reward = np.mean([x for x in self.epoch_rewards if isinstance(x, int)])
 
         return mean_reward
-    
-
-
-
-    
+   
 
 # create the environment instance for simulation
 env = simpy.Environment()
@@ -160,9 +156,13 @@ env = simpy.Environment()
 span = 100000
 m_no = 6
 wc_no = 3
-num_epochs = 1
-num_iterations = 1
+num_epochs = 10
+num_iterations = 100
 
 
 spf = shopfloor(env, span, m_no, wc_no)
 mean_reward = spf.train_rewards (num_epochs, num_iterations)
+
+print('you')
+print(spf.iterations)
+print(spf.rewards)
