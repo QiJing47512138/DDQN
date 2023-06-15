@@ -1,3 +1,4 @@
+import simpy
 import random
 import numpy as np
 import os
@@ -25,7 +26,6 @@ class routing_brain:
         self.m_per_wc = len(self.wc_list[0].m_list)
         print(self.wc_list[0].m_list,self.m_per_wc)
 
- 
         self.mean_reward = []
         
 
@@ -89,6 +89,8 @@ class routing_brain:
         # some shared process
         self.env.process(self.warm_up_process())
         self.env.process(self.update_training_setting_process())
+
+
 
 
     '''
@@ -444,13 +446,11 @@ class routing_brain:
         # print('perform the optimization of parameters')
         # optimize the parameters
         self.optimizer.step()
-
         return rewards
             
-
+    #计算平均奖励值mean
     def calc_reward(self):
         self.epoch_rewards =[]
-        
 
         mean_reward = np.mean(self.epoch_rewards)  # 计算平均奖励值
 
@@ -709,5 +709,14 @@ class build_network_TEST(nn.Module):
         x = self.tanh(x)
         x = self.fc7(x)
         return x
+# 创建类实例并提供必需的参数
 
 
+env = simpy.Environment()
+span = 100000
+job_creator = 10
+#m_list = [1,2,2,3,9,7]
+#wc_list = [4,1,1,2,4,5]
+warm_up=10
+#routing = routing_brain(env, job_creator, m_list, wc_list, warm_up, span)
+#routing.reward_record_output()

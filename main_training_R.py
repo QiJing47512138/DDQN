@@ -4,6 +4,7 @@ sys.path
 import numpy as np
 import torch
 from tabulate import tabulate
+import os
 
 import agent_machine
 import agent_workcenter
@@ -88,6 +89,36 @@ class shopfloor:
         env.run()
         self.routing_brain.check_parameter()
 
+    def reward_record_output(self,**kwargs):
+        fig = plt.figure(figsize=(10,5))
+    # right half, showing the record of rewards
+        reward_record = fig.add_subplot(1,1,1)
+        reward_record.set_xlabel('Time')
+        reward_record.set_ylabel('Reward')
+        time = np.array(self.job_creator.rt_reward_record).transpose()[0]
+        rewards = np.array(self.job_creator.rt_reward_record).transpose()[1]
+        #print(time, rewards)
+        reward_record.scatter(time, rewards, s=1,color='g', alpha=0.3, zorder=3)
+        reward_record.set_xlim(0,self.span)
+        reward_record.set_ylim(-1.1,1.1)
+        xtick_interval = 2000
+        reward_record.set_xticks(np.arange(0,self.span+1,xtick_interval))
+        reward_record.set_xticklabels(np.arange(0,self.span+1,xtick_interval),rotation=30, ha='right', rotation_mode="anchor", fontsize=8.5)
+        reward_record.set_yticks(np.arange(-1, 1.1, 0.1))
+        reward_record.grid(axis='x', which='major', alpha=0.5, zorder=0, )
+        reward_record.grid(axis='y', which='major', alpha=0.5, zorder=0, )
+        # moving average
+        x = 50
+        print(len(time))
+        reward_record.plot(time[int(x/2):len(time)-int(x/2)+1],np.convolve(rewards, np.ones(x)/x, mode='valid'),color='k',label="moving average")
+        reward_record.legend()
+        plt.show()
+        # save the figure if required
+        fig.subplots_adjust(top=0.5, bottom=0.5, right=0.9)
+        if 'save' in kwargs and kwargs['save']:
+            fig.savefig(os.path.join("experiment_result", "RA_reward_{}wc_{}m.png".format(len(self.job_creator.wc_list),len(self.m_list))), dpi=500, bbox_inches='tight')
+        return
+
     def calc_reward(self):
         # 计算当前 epoch 中的平均奖励值
         self.epoch_rewards = list(self.epoch_rewards)
@@ -128,7 +159,6 @@ class shopfloor:
             for j in range(num_iterations):
                 # 执行训练及相关操作
                 #reward = self.train_generator()
-
                 rewards_generator = self.train_generator()
                 for reward in rewards_generator:
                     self.epoch_rewards.append(reward)
@@ -136,18 +166,26 @@ class shopfloor:
                 #self.epoch_rewards.append(reward)
 
             self.calc_reward()
-
+        
+            reward = self.calc_reward()
+            self.epoch_rewards.append(reward)
+            mean_reward = np.mean(self.epoch_rewards)
+           
+            self.rewards.append((i + 1,mean_reward))
+            
             self.iterations.append(i + 1)
 
         self.plot_training_rewards(self.iterations,self.rewards) 
 
-        plt.show()
+        #等会  plt.show()
             
 
         # mean_reward = np.mean(list(self.epoch_rewards))
-        mean_reward = np.mean([x for x in self.epoch_rewards if isinstance(x, int)])
-
-        return mean_reward
+        # mean_reward = np.mean([x for x in self.epoch_rewards if isinstance(x, int)])
+        
+        
+        #return mean_reward
+        return self.rewards
    
 
 # create the environment instance for simulation
@@ -161,8 +199,8 @@ num_iterations = 100
 
 
 spf = shopfloor(env, span, m_no, wc_no)
-mean_reward = spf.train_rewards (num_epochs, num_iterations)
+#mean_reward = spf.train_rewards (num_epochs, num_iterations)
+#rewards = spf.train_rewards(num_epochs, num_iterations)
 
-print('you')
-print(spf.iterations)
-print(spf.rewards)
+
+huatu = spf.reward_record_output()
